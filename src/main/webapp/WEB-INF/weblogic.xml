@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wls:weblogic-web-app
+        xmlns:wls="http://xmlns.oracle.com/weblogic/weblogic-web-app"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://xmlns.oracle.com/weblogic/weblogic-web-app
+        http://xmlns.oracle.com/weblogic/weblogic-web-app/1.4/weblogic-web-app.xsd">
+
+    <wls:container-descriptor>
+        <!-- Force WebLogic to use the libraries packaged in WEB-INF/lib
+             (Spring, Jackson, etc.) instead of its own older bundled versions -->
+        <wls:prefer-web-inf-classes>true</wls:prefer-web-inf-classes>
+    </wls:container-descriptor>
+
+    <wls:context-root>cube</wls:context-root>
+
+</wls:weblogic-web-app>
