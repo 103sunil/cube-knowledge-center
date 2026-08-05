@@ -6,4 +6,5 @@ import java.util.Optional;
 
 public interface AccessMasterRepository extends JpaRepository<AccessMaster, Long> {
     Optional<AccessMaster> findByModuleIdAndAccessCode(Long moduleId, String accessCode);
+    boolean existsByModuleId(Long moduleId);
 }

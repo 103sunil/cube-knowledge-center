@@ -4,8 +4,11 @@ import com.example.cube.modules.auth.dto.GroupRequest;
 import com.example.cube.modules.auth.dto.GroupResponse;
 import com.example.cube.modules.auth.entity.GroupMaster;
 import com.example.cube.modules.auth.repository.GroupMasterRepository;
+import com.example.cube.modules.auth.repository.GroupAccessTemplateRepository;
+import com.example.cube.modules.auth.repository.UserGroupRepository;
 import com.example.cube.common.exception.AccessDeniedAppException;
 import com.example.cube.common.exception.DuplicateResourceException;
+import com.example.cube.common.exception.ResourceInUseException;
 import com.example.cube.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -22,6 +25,8 @@ public class GroupService {
     private static final String MODULE = "AUTH";
 
     private final GroupMasterRepository groupMasterRepository;
+    private final UserGroupRepository userGroupRepository;
+    private final GroupAccessTemplateRepository groupAccessTemplateRepository;
     private final AccessControlService accessControlService;
 
     @Transactional
@@ -61,6 +66,17 @@ public class GroupService {
     public void delete(Long groupId, Authentication auth) {
         requirePermission(auth, "MANAGE_GROUPS");
         GroupMaster group = findOrThrow(groupId);
+
+        // No FK to stop this at the DB level - block explicitly instead of orphaning rows
+        if (userGroupRepository.existsByGroupId(groupId)) {
+            throw new ResourceInUseException("Group has users assigned - reassign them before deleting: " + groupId);
+        }
+
+        // Safe to cascade: these are just permission grants for the group, not source-of-truth data
+        groupAccessTemplateRepository.findAll().stream()
+                .filter(t -> t.getGroupId().equals(groupId))
+                .forEach(groupAccessTemplateRepository::delete);
+
         groupMasterRepository.delete(group);
     }
 

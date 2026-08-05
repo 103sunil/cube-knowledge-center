@@ -4,8 +4,10 @@ import com.example.cube.modules.auth.dto.ModuleRequest;
 import com.example.cube.modules.auth.dto.ModuleResponse;
 import com.example.cube.modules.auth.entity.ModuleMaster;
 import com.example.cube.modules.auth.repository.ModuleMasterRepository;
+import com.example.cube.modules.auth.repository.AccessMasterRepository;
 import com.example.cube.common.exception.AccessDeniedAppException;
 import com.example.cube.common.exception.DuplicateResourceException;
+import com.example.cube.common.exception.ResourceInUseException;
 import com.example.cube.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -22,6 +24,7 @@ public class ModuleService {
     private static final String MODULE = "AUTH";
 
     private final ModuleMasterRepository moduleMasterRepository;
+    private final AccessMasterRepository accessMasterRepository;
     private final AccessControlService accessControlService;
 
     @Transactional
@@ -61,6 +64,12 @@ public class ModuleService {
     public void delete(Long moduleId, Authentication auth) {
         requirePermission(auth, "MANAGE_MODULES");
         ModuleMaster module = findOrThrow(moduleId);
+
+        // No FK to stop this at the DB level - block explicitly instead of orphaning access codes
+        if (accessMasterRepository.existsByModuleId(moduleId)) {
+            throw new ResourceInUseException("Module has access codes defined - delete those first: " + moduleId);
+        }
+
         moduleMasterRepository.delete(module);
     }
 

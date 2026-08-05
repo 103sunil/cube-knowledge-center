@@ -5,6 +5,8 @@ import com.example.cube.modules.auth.dto.AccessResponse;
 import com.example.cube.modules.auth.entity.AccessMaster;
 import com.example.cube.modules.auth.repository.AccessMasterRepository;
 import com.example.cube.modules.auth.repository.ModuleMasterRepository;
+import com.example.cube.modules.auth.repository.GroupAccessTemplateRepository;
+import com.example.cube.modules.auth.repository.UserAccessRepository;
 import com.example.cube.common.exception.AccessDeniedAppException;
 import com.example.cube.common.exception.DuplicateResourceException;
 import com.example.cube.common.exception.ResourceNotFoundException;
@@ -24,6 +26,8 @@ public class AccessService {
 
     private final AccessMasterRepository accessMasterRepository;
     private final ModuleMasterRepository moduleMasterRepository;
+    private final GroupAccessTemplateRepository groupAccessTemplateRepository;
+    private final UserAccessRepository userAccessRepository;
     private final AccessControlService accessControlService;
 
     @Transactional
@@ -56,6 +60,12 @@ public class AccessService {
         requirePermission(auth, "MANAGE_ACCESS");
         AccessMaster access = accessMasterRepository.findById(accessId)
                 .orElseThrow(() -> new ResourceNotFoundException("Access code not found: " + accessId));
+
+        // No FK to cascade this at the DB level - clean up manually so nothing
+        // orphans in GROUP_ACCESS_TEMPLATE / USER_ACCESS pointing at a dead access_id
+        groupAccessTemplateRepository.deleteAll(groupAccessTemplateRepository.findByAccessId(accessId));
+        userAccessRepository.deleteAll(userAccessRepository.findByAccessId(accessId));
+
         accessMasterRepository.delete(access);
     }
 
