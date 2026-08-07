@@ -4,7 +4,7 @@ import lombok.*;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "USER_GROUP")
+@Table(name = "CU_USER_GROUP")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class UserGroup {
 

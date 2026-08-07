@@ -4,7 +4,7 @@ import lombok.*;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "GROUP_ACCESS_TEMPLATE")
+@Table(name = "CU_GROUP_ACCESS_TEMPLATE")
 @IdClass(GroupAccessId.class)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class GroupAccessTemplate {

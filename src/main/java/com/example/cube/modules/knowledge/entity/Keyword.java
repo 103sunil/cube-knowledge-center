@@ -4,7 +4,7 @@ import lombok.*;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "KEYWORD")
+@Table(name = "CU_KEYWORD")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Keyword {
 

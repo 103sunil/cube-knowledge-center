@@ -4,7 +4,7 @@ import lombok.*;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "KNOWLEDGE_KEYWORD")
+@Table(name = "CU_KNOWLEDGE_KEYWORD")
 @IdClass(KnowledgeKeywordId.class)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class KnowledgeKeyword {

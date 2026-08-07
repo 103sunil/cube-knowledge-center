@@ -5,7 +5,7 @@ import javax.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "USER_MASTER")
+@Table(name = "CU_USER_MASTER")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class UserMaster {
 

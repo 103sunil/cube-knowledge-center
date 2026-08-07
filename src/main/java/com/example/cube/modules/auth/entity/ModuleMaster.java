@@ -4,7 +4,7 @@ import lombok.*;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "MODULE_MASTER")
+@Table(name = "CU_MODULE_MASTER")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class ModuleMaster {
 

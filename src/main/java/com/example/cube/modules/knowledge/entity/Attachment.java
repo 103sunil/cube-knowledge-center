@@ -5,7 +5,7 @@ import javax.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "ATTACHMENT")
+@Table(name = "CU_ATTACHMENT")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Attachment {
 

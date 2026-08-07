@@ -4,7 +4,6 @@ import com.example.cube.modules.knowledge.dto.KnowledgeCreateRequest;
 import com.example.cube.modules.knowledge.dto.KnowledgeResponse;
 import com.example.cube.modules.knowledge.entity.*;
 import com.example.cube.modules.knowledge.repository.*;
-import com.example.cube.modules.knowledge.search.KnowledgeSearchService;
 import com.example.cube.modules.auth.entity.UserMaster;
 import com.example.cube.modules.auth.repository.UserMasterRepository;
 import com.example.cube.modules.auth.service.AccessControlService;
@@ -33,7 +32,6 @@ public class KnowledgeService {
     private final KnowledgeKeywordRepository knowledgeKeywordRepository;
     private final UserMasterRepository userMasterRepository;
     private final AccessControlService accessControlService;
-    private final KnowledgeSearchService knowledgeSearchService;
 
     @Transactional
     public KnowledgeResponse create(KnowledgeCreateRequest request, Authentication auth) {
@@ -49,18 +47,14 @@ public class KnowledgeService {
                 .build();
         knowledge = knowledgeRepository.save(knowledge);
 
-        for (String rawKeyword : request.getKeywords()) {
-            String name = rawKeyword.trim();
-            if (name.isEmpty()) continue;
-            Keyword keyword = keywordRepository.findByKeywordNameIgnoreCase(name)
-                    .orElseGet(() -> keywordRepository.save(Keyword.builder().keywordName(name).build()));
-            knowledgeKeywordRepository.save(KnowledgeKeyword.builder()
-                    .knowledgeId(knowledge.getKnowledgeId())
-                    .keywordId(keyword.getKeywordId())
-                    .build());
-        }
+        List<String> keywordNames = saveKeywords(knowledge.getKnowledgeId(), request.getKeywords());
 
-        return toResponse(knowledge);
+        // Oracle Text indexes this column (sql/schema.sql) - keep it in sync
+        // whenever title/description/keywords change, not just here.
+        knowledge.setSearchText(buildSearchText(knowledge.getTitle(), knowledge.getDescription(), keywordNames));
+        knowledge = knowledgeRepository.save(knowledge);
+
+        return toResponse(knowledge, keywordNames);
     }
 
     public Page<KnowledgeResponse> listPending(Authentication auth, Pageable pageable) {
@@ -77,13 +71,11 @@ public class KnowledgeService {
         knowledge.setStatus("PUBLISHED");
         knowledge.setReviewedBy(reviewer.getUserId());
         knowledge.setReviewedAt(LocalDateTime.now());
-        knowledge = knowledgeRepository.save(knowledge);
-
-        // Only PUBLISHED items are ever indexed - search results can never surface
-        // a PENDING/REJECTED/DRAFT item this way, regardless of who queries.
-        knowledgeSearchService.index(knowledge, keywordsFor(knowledge.getKnowledgeId()));
-
-        return toResponse(knowledge);
+        // No separate indexing step needed - SEARCH_TEXT was already set at
+        // creation time. Oracle Text searches WHERE status = 'PUBLISHED', so
+        // this row only starts showing up in search results the moment this
+        // status flip commits - nothing else to do here.
+        return toResponse(knowledgeRepository.save(knowledge));
     }
 
     @Transactional
@@ -111,13 +103,9 @@ public class KnowledgeService {
         if (query == null || query.trim().isEmpty()) {
             return Collections.emptyList();
         }
-        List<Long> ids = knowledgeSearchService.search(query.trim());
-        if (ids.isEmpty()) {
-            return Collections.emptyList();
-        }
-        // Index only ever contains PUBLISHED items (see approve()), so no extra
-        // status filter is needed here - every id returned is safe to show.
-        return knowledgeRepository.findByKnowledgeIdIn(ids).stream()
+        // searchPublished() already filters to status='PUBLISHED' in the query
+        // itself - nothing unpublished can come back from this call.
+        return knowledgeRepository.searchPublished(query.trim()).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
@@ -139,6 +127,30 @@ public class KnowledgeService {
         if (!isOwner && !isReviewer) {
             throw new AccessDeniedAppException("Not authorized to view this knowledge item");
         }
+    }
+
+    private List<String> saveKeywords(Long knowledgeId, List<String> rawKeywords) {
+        List<String> names = new java.util.ArrayList<>();
+        for (String rawKeyword : rawKeywords) {
+            String name = rawKeyword.trim();
+            if (name.isEmpty()) continue;
+            Keyword keyword = keywordRepository.findByKeywordNameIgnoreCase(name)
+                    .orElseGet(() -> keywordRepository.save(Keyword.builder().keywordName(name).build()));
+            knowledgeKeywordRepository.save(KnowledgeKeyword.builder()
+                    .knowledgeId(knowledgeId)
+                    .keywordId(keyword.getKeywordId())
+                    .build());
+            names.add(keyword.getKeywordName());
+        }
+        return names;
+    }
+
+    private String buildSearchText(String title, String description, List<String> keywords) {
+        StringBuilder sb = new StringBuilder();
+        if (title != null) sb.append(title).append(' ');
+        if (description != null) sb.append(description).append(' ');
+        sb.append(String.join(" ", keywords));
+        return sb.toString();
     }
 
     private List<String> keywordsFor(Long knowledgeId) {
@@ -165,6 +177,10 @@ public class KnowledgeService {
     }
 
     private KnowledgeResponse toResponse(Knowledge k) {
+        return toResponse(k, keywordsFor(k.getKnowledgeId()));
+    }
+
+    private KnowledgeResponse toResponse(Knowledge k, List<String> keywords) {
         return KnowledgeResponse.builder()
                 .knowledgeId(k.getKnowledgeId())
                 .title(k.getTitle())
@@ -175,7 +191,7 @@ public class KnowledgeService {
                 .reviewedBy(k.getReviewedBy())
                 .reviewedAt(k.getReviewedAt())
                 .rejectionReason(k.getRejectionReason())
-                .keywords(keywordsFor(k.getKnowledgeId()))
+                .keywords(keywords)
                 .build();
     }
 }

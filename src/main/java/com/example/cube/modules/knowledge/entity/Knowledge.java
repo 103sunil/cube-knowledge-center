@@ -5,7 +5,7 @@ import javax.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "KNOWLEDGE")
+@Table(name = "CU_KNOWLEDGE")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Knowledge {
 
@@ -39,6 +39,14 @@ public class Knowledge {
     @Lob
     @Column(name = "REJECTION_REASON")
     private String rejectionReason;
+
+    // Denormalized title + description + keywords, kept in sync by KnowledgeService
+    // on every create/keyword change. Oracle Text indexes this column (see
+    // sql/schema.sql) - this is what CONTAINS() in KnowledgeRepository.searchPublished
+    // actually searches. Never set directly outside KnowledgeService.
+    @Lob
+    @Column(name = "SEARCH_TEXT")
+    private String searchText;
 
     @PrePersist
     protected void onCreate() {

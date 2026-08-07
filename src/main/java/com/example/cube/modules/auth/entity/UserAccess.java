@@ -5,7 +5,7 @@ import javax.persistence.*;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "USER_ACCESS")
+@Table(name = "CU_USER_ACCESS")
 @IdClass(UserAccessId.class)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class UserAccess {

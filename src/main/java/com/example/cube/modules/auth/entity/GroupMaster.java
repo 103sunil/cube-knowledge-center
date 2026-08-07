@@ -4,7 +4,7 @@ import lombok.*;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "GROUP_MASTER")
+@Table(name = "CU_GROUP_MASTER")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class GroupMaster {
 

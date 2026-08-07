@@ -42,10 +42,10 @@
         </dependency>
 
 
-        <!-- Elasticsearch -->
+        <!-- Health check / readiness endpoint -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
 

@@ -4,7 +4,7 @@ import lombok.*;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "ACCESS_MASTER", uniqueConstraints = @UniqueConstraint(columnNames = {"MODULE_ID", "ACCESS_CODE"}))
+@Table(name = "CU_ACCESS_MASTER", uniqueConstraints = @UniqueConstraint(columnNames = {"MODULE_ID", "ACCESS_CODE"}))
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class AccessMaster {
 
