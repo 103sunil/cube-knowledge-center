@@ -4,6 +4,7 @@ import com.example.cube.modules.knowledge.dto.KnowledgeCreateRequest;
 import com.example.cube.modules.knowledge.dto.KnowledgeResponse;
 import com.example.cube.modules.knowledge.entity.*;
 import com.example.cube.modules.knowledge.repository.*;
+import com.example.cube.modules.knowledge.search.KnowledgeSearchService;
 import com.example.cube.modules.auth.entity.UserMaster;
 import com.example.cube.modules.auth.repository.UserMasterRepository;
 import com.example.cube.modules.auth.service.AccessControlService;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,6 +33,7 @@ public class KnowledgeService {
     private final KnowledgeKeywordRepository knowledgeKeywordRepository;
     private final UserMasterRepository userMasterRepository;
     private final AccessControlService accessControlService;
+    private final KnowledgeSearchService knowledgeSearchService;
 
     @Transactional
     public KnowledgeResponse create(KnowledgeCreateRequest request, Authentication auth) {
@@ -74,7 +77,13 @@ public class KnowledgeService {
         knowledge.setStatus("PUBLISHED");
         knowledge.setReviewedBy(reviewer.getUserId());
         knowledge.setReviewedAt(LocalDateTime.now());
-        return toResponse(knowledgeRepository.save(knowledge));
+        knowledge = knowledgeRepository.save(knowledge);
+
+        // Only PUBLISHED items are ever indexed - search results can never surface
+        // a PENDING/REJECTED/DRAFT item this way, regardless of who queries.
+        knowledgeSearchService.index(knowledge, keywordsFor(knowledge.getKnowledgeId()));
+
+        return toResponse(knowledge);
     }
 
     @Transactional
@@ -90,8 +99,53 @@ public class KnowledgeService {
         return toResponse(knowledgeRepository.save(knowledge));
     }
 
-    public KnowledgeResponse getById(Long knowledgeId) {
-        return toResponse(findOrThrow(knowledgeId));
+    public KnowledgeResponse getById(Long knowledgeId, Authentication auth) {
+        requirePermission(auth, "VIEW");
+        Knowledge knowledge = findOrThrow(knowledgeId);
+        assertViewable(knowledge, auth);
+        return toResponse(knowledge);
+    }
+
+    public List<KnowledgeResponse> search(String query, Authentication auth) {
+        requirePermission(auth, "SEARCH");
+        if (query == null || query.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<Long> ids = knowledgeSearchService.search(query.trim());
+        if (ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        // Index only ever contains PUBLISHED items (see approve()), so no extra
+        // status filter is needed here - every id returned is safe to show.
+        return knowledgeRepository.findByKnowledgeIdIn(ids).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Shared visibility rule, also used by AttachmentService before it lets
+     * anyone download a file attached to a knowledge item:
+     *   - PUBLISHED   -> visible to anyone with VIEW
+     *   - PENDING/REJECTED/DRAFT -> visible only to the submitter or to
+     *     someone who holds APPROVE (i.e. a manager/reviewer)
+     */
+    public void assertViewable(Knowledge knowledge, Authentication auth) {
+        if ("PUBLISHED".equals(knowledge.getStatus())) {
+            return;
+        }
+        UserMaster user = currentUser(auth);
+        boolean isOwner = knowledge.getCreatedBy().equals(user.getUserId());
+        boolean isReviewer = accessControlService.hasPermission(auth.getName(), MODULE, "APPROVE");
+        if (!isOwner && !isReviewer) {
+            throw new AccessDeniedAppException("Not authorized to view this knowledge item");
+        }
+    }
+
+    private List<String> keywordsFor(Long knowledgeId) {
+        return knowledgeKeywordRepository.findByKnowledgeId(knowledgeId).stream()
+                .map(kk -> keywordRepository.findById(kk.getKeywordId()).map(Keyword::getKeywordName).orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toList());
     }
 
     private Knowledge findOrThrow(Long knowledgeId) {
@@ -111,11 +165,6 @@ public class KnowledgeService {
     }
 
     private KnowledgeResponse toResponse(Knowledge k) {
-        List<String> keywords = knowledgeKeywordRepository.findByKnowledgeId(k.getKnowledgeId()).stream()
-                .map(kk -> keywordRepository.findById(kk.getKeywordId()).map(Keyword::getKeywordName).orElse(null))
-                .filter(java.util.Objects::nonNull)
-                .collect(Collectors.toList());
-
         return KnowledgeResponse.builder()
                 .knowledgeId(k.getKnowledgeId())
                 .title(k.getTitle())
@@ -126,7 +175,7 @@ public class KnowledgeService {
                 .reviewedBy(k.getReviewedBy())
                 .reviewedAt(k.getReviewedAt())
                 .rejectionReason(k.getRejectionReason())
-                .keywords(keywords)
+                .keywords(keywordsFor(k.getKnowledgeId()))
                 .build();
     }
 }
