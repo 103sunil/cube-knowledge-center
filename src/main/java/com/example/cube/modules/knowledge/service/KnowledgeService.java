@@ -2,6 +2,7 @@ package com.example.cube.modules.knowledge.service;
 
 import com.example.cube.modules.knowledge.dto.KnowledgeCreateRequest;
 import com.example.cube.modules.knowledge.dto.KnowledgeResponse;
+import com.example.cube.modules.knowledge.dto.KnowledgeUpdateRequest;
 import com.example.cube.modules.knowledge.entity.*;
 import com.example.cube.modules.knowledge.repository.*;
 import com.example.cube.modules.auth.entity.UserMaster;
@@ -30,6 +31,7 @@ public class KnowledgeService {
     private final KnowledgeRepository knowledgeRepository;
     private final KeywordRepository keywordRepository;
     private final KnowledgeKeywordRepository knowledgeKeywordRepository;
+    private final AttachmentRepository attachmentRepository;
     private final UserMasterRepository userMasterRepository;
     private final AccessControlService accessControlService;
 
@@ -49,8 +51,6 @@ public class KnowledgeService {
 
         List<String> keywordNames = saveKeywords(knowledge.getKnowledgeId(), request.getKeywords());
 
-        // Oracle Text indexes this column (sql/schema.sql) - keep it in sync
-        // whenever title/description/keywords change, not just here.
         knowledge.setSearchText(buildSearchText(knowledge.getTitle(), knowledge.getDescription(), keywordNames));
         knowledge = knowledgeRepository.save(knowledge);
 
@@ -71,10 +71,6 @@ public class KnowledgeService {
         knowledge.setStatus("PUBLISHED");
         knowledge.setReviewedBy(reviewer.getUserId());
         knowledge.setReviewedAt(LocalDateTime.now());
-        // No separate indexing step needed - SEARCH_TEXT was already set at
-        // creation time. Oracle Text searches WHERE status = 'PUBLISHED', so
-        // this row only starts showing up in search results the moment this
-        // status flip commits - nothing else to do here.
         return toResponse(knowledgeRepository.save(knowledge));
     }
 
@@ -91,6 +87,33 @@ public class KnowledgeService {
         return toResponse(knowledgeRepository.save(knowledge));
     }
 
+    @Transactional
+    public KnowledgeResponse update(Long knowledgeId, KnowledgeUpdateRequest request, Authentication auth) {
+        requirePermission(auth, "UPDATE");
+        Knowledge knowledge = findOrThrow(knowledgeId);
+
+        knowledge.setTitle(request.getTitle());
+        knowledge.setDescription(request.getDescription());
+
+        knowledgeKeywordRepository.deleteAll(knowledgeKeywordRepository.findByKnowledgeId(knowledgeId));
+        List<String> keywordNames = saveKeywords(knowledgeId, request.getKeywords());
+
+        knowledge.setSearchText(buildSearchText(knowledge.getTitle(), knowledge.getDescription(), keywordNames));
+        knowledge = knowledgeRepository.save(knowledge);
+
+        return toResponse(knowledge, keywordNames);
+    }
+
+    @Transactional
+    public void delete(Long knowledgeId, Authentication auth) {
+        requirePermission(auth, "DELETE");
+        Knowledge knowledge = findOrThrow(knowledgeId);
+
+        knowledgeKeywordRepository.deleteAll(knowledgeKeywordRepository.findByKnowledgeId(knowledgeId));
+        attachmentRepository.deleteAll(attachmentRepository.findByKnowledgeId(knowledgeId));
+        knowledgeRepository.delete(knowledge);
+    }
+
     public KnowledgeResponse getById(Long knowledgeId, Authentication auth) {
         requirePermission(auth, "VIEW");
         Knowledge knowledge = findOrThrow(knowledgeId);
@@ -103,20 +126,11 @@ public class KnowledgeService {
         if (query == null || query.trim().isEmpty()) {
             return Collections.emptyList();
         }
-        // searchPublished() already filters to status='PUBLISHED' in the query
-        // itself - nothing unpublished can come back from this call.
         return knowledgeRepository.searchPublished(query.trim()).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Shared visibility rule, also used by AttachmentService before it lets
-     * anyone download a file attached to a knowledge item:
-     *   - PUBLISHED   -> visible to anyone with VIEW
-     *   - PENDING/REJECTED/DRAFT -> visible only to the submitter or to
-     *     someone who holds APPROVE (i.e. a manager/reviewer)
-     */
     public void assertViewable(Knowledge knowledge, Authentication auth) {
         if ("PUBLISHED".equals(knowledge.getStatus())) {
             return;

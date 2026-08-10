@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.context.annotation.Profile;
 
 import java.util.Map;
 
@@ -15,6 +16,7 @@ import java.util.Map;
  * a resumable upload session, not implemented here yet.
  */
 @Service
+@Profile("!local")
 public class OneDriveStorageService implements FileStorageService {
 
     @Value("${graph.drive-id}")

@@ -6,6 +6,7 @@ import com.example.cube.modules.auth.entity.UserMaster;
 import com.example.cube.modules.auth.repository.GroupMasterRepository;
 import com.example.cube.modules.auth.repository.UserGroupRepository;
 import com.example.cube.modules.auth.repository.UserMasterRepository;
+import com.example.cube.modules.auth.service.AccessControlService;
 import com.example.cube.modules.auth.service.UserService;
 import com.example.cube.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -26,6 +28,7 @@ public class UserController {
     private final UserGroupRepository userGroupRepository;
     private final GroupMasterRepository groupMasterRepository;
     private final UserService userService;
+    private final AccessControlService accessControlService;
 
     @GetMapping("/me")
     public ResponseEntity<MeResponse> me(Authentication authentication) {
@@ -45,6 +48,11 @@ public class UserController {
                 .lastName(user.getLastName())
                 .groupCode(groupCode)
                 .build());
+    }
+
+    @GetMapping("/me/permissions")
+    public ResponseEntity<List<PermissionResponse>> myPermissions(Authentication authentication) {
+        return ResponseEntity.ok(accessControlService.resolveAllPermissions(authentication.getName()));
     }
 
     // ---- admin endpoints, gated by AUTH/MANAGE_USERS via AccessControlService ----

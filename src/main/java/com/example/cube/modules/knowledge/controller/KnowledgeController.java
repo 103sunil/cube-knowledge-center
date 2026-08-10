@@ -2,6 +2,7 @@ package com.example.cube.modules.knowledge.controller;
 
 import com.example.cube.modules.knowledge.dto.KnowledgeCreateRequest;
 import com.example.cube.modules.knowledge.dto.KnowledgeResponse;
+import com.example.cube.modules.knowledge.dto.KnowledgeUpdateRequest;
 import com.example.cube.modules.knowledge.dto.RejectRequest;
 import com.example.cube.modules.knowledge.service.KnowledgeService;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,19 @@ public class KnowledgeController {
                                                                  Pageable pageable,
                                                                  Authentication auth) {
         return ResponseEntity.ok(knowledgeService.listPending(auth, pageable));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<KnowledgeResponse> update(@PathVariable Long id,
+                                                      @Valid @RequestBody KnowledgeUpdateRequest request,
+                                                      Authentication auth) {
+        return ResponseEntity.ok(knowledgeService.update(id, request, auth));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id, Authentication auth) {
+        knowledgeService.delete(id, auth);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/approve")

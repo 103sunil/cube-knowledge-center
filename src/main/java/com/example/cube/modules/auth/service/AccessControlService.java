@@ -1,12 +1,15 @@
 package com.example.cube.modules.auth.service;
 
+import com.example.cube.modules.auth.dto.PermissionResponse;
 import com.example.cube.modules.auth.entity.*;
 import com.example.cube.modules.auth.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Implements the permission resolution flow from the architecture doc:
@@ -39,7 +42,6 @@ public class AccessControlService {
 
         Long accessId = accessOpt.get().getAccessId();
 
-        // 1. USER_ACCESS override
         Optional<UserAccess> override = userAccessRepository.findByUserIdAndAccessId(user.getUserId(), accessId);
         if (override.isPresent()) {
             UserAccess ua = override.get();
@@ -47,7 +49,6 @@ public class AccessControlService {
             return "Y".equals(ua.getAllowed()) && notExpired;
         }
 
-        // 2. Fall back to group template
         Optional<UserGroup> userGroup = userGroupRepository.findByUserId(user.getUserId());
         if (!userGroup.isPresent()) return false;
 
@@ -55,5 +56,37 @@ public class AccessControlService {
                 .findByGroupIdAndAccessId(userGroup.get().getGroupId(), accessId)
                 .map(gat -> "Y".equals(gat.getAllowed()))
                 .orElse(false);
+    }
+
+    /**
+     * Enumerates every access code the user currently has, via the same
+     * override-then-template resolution as hasPermission() above - used by
+     * GET /api/v1/users/me/permissions so a frontend can hide/show UI without
+     * discovering a 403 by trial and error.
+     */
+    public List<PermissionResponse> resolveAllPermissions(String username) {
+        List<ModuleMaster> modules = moduleMasterRepository.findAll();
+
+        return accessMasterRepository.findAll().stream()
+                .filter(access -> {
+                    String moduleCode = modules.stream()
+                            .filter(m -> m.getModuleId().equals(access.getModuleId()))
+                            .map(ModuleMaster::getModuleCode)
+                            .findFirst()
+                            .orElse(null);
+                    return moduleCode != null && hasPermission(username, moduleCode, access.getAccessCode());
+                })
+                .map(access -> {
+                    String moduleCode = modules.stream()
+                            .filter(m -> m.getModuleId().equals(access.getModuleId()))
+                            .map(ModuleMaster::getModuleCode)
+                            .findFirst()
+                            .orElse(null);
+                    return PermissionResponse.builder()
+                            .moduleCode(moduleCode)
+                            .accessCode(access.getAccessCode())
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 }

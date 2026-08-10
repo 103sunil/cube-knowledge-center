@@ -24,7 +24,9 @@ INSERT INTO CU_ACCESS_MASTER (module_id, access_code, description) VALUES (2, 'A
 INSERT INTO CU_ACCESS_MASTER (module_id, access_code, description) VALUES (2, 'VIEW', 'View a knowledge article');
 INSERT INTO CU_ACCESS_MASTER (module_id, access_code, description) VALUES (2, 'SEARCH', 'Search published knowledge');
 INSERT INTO CU_ACCESS_MASTER (module_id, access_code, description) VALUES (2, 'DOWNLOAD', 'Download an attachment');
--- access_id: CREATE=7, APPROVE=8, VIEW=9, SEARCH=10, DOWNLOAD=11
+INSERT INTO CU_ACCESS_MASTER (module_id, access_code, description) VALUES (2, 'UPDATE', 'Edit an existing knowledge item');
+INSERT INTO CU_ACCESS_MASTER (module_id, access_code, description) VALUES (2, 'DELETE', 'Delete a knowledge item');
+-- access_id: CREATE=7, APPROVE=8, VIEW=9, SEARCH=10, DOWNLOAD=11, UPDATE=12, DELETE=13
 
 -- ===== Group -> access templates =====
 -- ADMIN (group_id=1): full AUTH access
@@ -34,6 +36,8 @@ INSERT INTO CU_GROUP_ACCESS_TEMPLATE (group_id, access_id, allowed) VALUES (1, 3
 INSERT INTO CU_GROUP_ACCESS_TEMPLATE (group_id, access_id, allowed) VALUES (1, 4, 'Y');
 INSERT INTO CU_GROUP_ACCESS_TEMPLATE (group_id, access_id, allowed) VALUES (1, 5, 'Y');
 INSERT INTO CU_GROUP_ACCESS_TEMPLATE (group_id, access_id, allowed) VALUES (1, 6, 'Y');
+INSERT INTO CU_GROUP_ACCESS_TEMPLATE (group_id, access_id, allowed) VALUES (3, 12, 'Y'); -- UPDATE
+INSERT INTO CU_GROUP_ACCESS_TEMPLATE (group_id, access_id, allowed) VALUES (3, 13, 'Y'); -- DELETE
 
 -- EMPLOYEE (group_id=2): search/view/download + submit, NOT approve
 INSERT INTO CU_GROUP_ACCESS_TEMPLATE (group_id, access_id, allowed) VALUES (2, 7, 'Y');  -- CREATE
@@ -48,6 +52,7 @@ INSERT INTO CU_GROUP_ACCESS_TEMPLATE (group_id, access_id, allowed) VALUES (3, 8
 INSERT INTO CU_GROUP_ACCESS_TEMPLATE (group_id, access_id, allowed) VALUES (3, 9, 'Y');  -- VIEW
 INSERT INTO CU_GROUP_ACCESS_TEMPLATE (group_id, access_id, allowed) VALUES (3, 10, 'Y'); -- SEARCH
 INSERT INTO CU_GROUP_ACCESS_TEMPLATE (group_id, access_id, allowed) VALUES (3, 11, 'Y'); -- DOWNLOAD
+
 
 -- ===== Bootstrap users =====
 -- admin / Admin@123

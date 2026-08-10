@@ -28,6 +28,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.NOT_FOUND, ex.getMessage(), req);
     }
 
+    @ExceptionHandler(FileStorageException.class)
+    public ResponseEntity<ApiError> handleFileStorage(FileStorageException ex, WebRequest req) {
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), req);
+    }
+
     @ExceptionHandler(DuplicateResourceException.class)
     public ResponseEntity<ApiError> handleDuplicate(DuplicateResourceException ex, WebRequest req) {
         return build(HttpStatus.CONFLICT, ex.getMessage(), req);
