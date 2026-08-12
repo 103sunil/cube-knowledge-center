@@ -27,6 +27,13 @@ public class AttachmentController {
         return ResponseEntity.ok(attachmentService.upload(knowledgeId, file, auth));
     }
 
+    @PostMapping("/knowledge/{knowledgeId}/attachments/batch")
+    public ResponseEntity<List<AttachmentResponse>> uploadBatch(@PathVariable Long knowledgeId,
+                                                                  @RequestParam("files") List<MultipartFile> files,
+                                                                  Authentication auth) {
+        return ResponseEntity.ok(attachmentService.uploadBatch(knowledgeId, files, auth));
+    }
+
     @GetMapping("/knowledge/{knowledgeId}/attachments")
     public ResponseEntity<List<AttachmentResponse>> list(@PathVariable Long knowledgeId, Authentication auth) {
         return ResponseEntity.ok(attachmentService.listByKnowledge(knowledgeId, auth));

@@ -41,11 +41,15 @@ public class KnowledgeService {
 
         UserMaster user = currentUser(auth);
 
+        boolean autoPublish = accessControlService.hasPermission(auth.getName(), MODULE, "APPROVE");
+
         Knowledge knowledge = Knowledge.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
-                .status("PENDING")
+                .status(autoPublish ? "PUBLISHED" : "PENDING")
                 .createdBy(user.getUserId())
+                .reviewedBy(autoPublish ? user.getUserId() : null)
+                .reviewedAt(autoPublish ? LocalDateTime.now() : null)
                 .build();
         knowledge = knowledgeRepository.save(knowledge);
 
