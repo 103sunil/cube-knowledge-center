@@ -2,15 +2,19 @@ package com.example.cube.modules.knowledge.controller;
 
 import com.example.cube.modules.knowledge.dto.KnowledgeCreateRequest;
 import com.example.cube.modules.knowledge.dto.KnowledgeResponse;
+import com.example.cube.modules.knowledge.dto.KnowledgeSubmissionResponse;
 import com.example.cube.modules.knowledge.dto.KnowledgeUpdateRequest;
 import com.example.cube.modules.knowledge.dto.RejectRequest;
 import com.example.cube.modules.knowledge.service.KnowledgeService;
+import com.example.cube.modules.knowledge.service.KnowledgeSubmissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.Valid;
 import java.util.List;
@@ -21,11 +25,22 @@ import java.util.List;
 public class KnowledgeController {
 
     private final KnowledgeService knowledgeService;
+    private final KnowledgeSubmissionService knowledgeSubmissionService;
 
     @PostMapping
     public ResponseEntity<KnowledgeResponse> create(@Valid @RequestBody KnowledgeCreateRequest request,
                                                       Authentication auth) {
         return ResponseEntity.ok(knowledgeService.create(request, auth));
+    }
+
+    @PostMapping(value = "/submit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<KnowledgeSubmissionResponse> submit(
+            @RequestParam("title") String title,
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam("keywords") List<String> keywords,
+            @RequestParam("files") List<MultipartFile> files,
+            Authentication auth) {
+        return ResponseEntity.ok(knowledgeSubmissionService.submit(title, description, keywords, files, auth));
     }
 
     @GetMapping("/{id}")
